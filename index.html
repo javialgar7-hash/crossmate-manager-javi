@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Crossmate · Manager</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0F0E0D;color:#E8E6DF;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:14px;padding:24px 16px;min-height:100vh}
+.wrap{max-width:1100px;margin:0 auto}
+.header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px}
+.header h1{font-size:15px;font-weight:600;letter-spacing:-.3px}
+.header p{font-size:11px;color:#6B6B68;margin-top:3px}
+.badge{background:#171614;border:1px solid #242220;border-radius:6px;padding:6px 12px;font-size:11px;color:#9CA3A0;cursor:pointer;transition:opacity .15s}
+.badge:hover{opacity:.7}
+.pills{display:flex;gap:6px;margin-bottom:24px}
+.pill{background:#171614;border:1px solid #242220;color:#9CA3A0;border-radius:20px;padding:5px 14px;font-size:12px;cursor:pointer;transition:all .15s}
+.pill.active{background:#E8400C;border-color:#E8400C;color:#fff}
+.kpis{display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:10px;margin-bottom:24px}
+.kpi{background:#171614;border:1px solid #242220;border-radius:10px;padding:14px 16px;transition:opacity .3s}
+.kpi.loading{opacity:.4}
+.kpi-val{font-size:26px;font-weight:700;letter-spacing:-1px}
+.kpi-label{font-size:11px;color:#6B6B68;margin-top:4px;text-transform:uppercase;letter-spacing:.5px}
+.kpi-sub{font-size:11px;color:#9CA3A0;margin-top:2px}
+.charts{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+.card{background:#171614;border:1px solid #242220;border-radius:10px;padding:16px}
+.card-title{font-size:12px;font-weight:600;color:#9CA3A0;text-transform:uppercase;letter-spacing:.5px;margin-bottom:14px}
+.chart-wrap{position:relative;height:160px}
+.search-row{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+.search-row input{background:#1A1917;border:1px solid #242220;border-radius:6px;padding:6px 10px;font-size:12px;color:#E8E6DF;outline:none;flex:1;min-width:160px}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{text-align:left;padding:8px 10px;color:#6B6B68;font-weight:500;border-bottom:1px solid #242220;font-size:11px;text-transform:uppercase;letter-spacing:.4px}
+td{padding:9px 10px;border-bottom:1px solid #1E1C1A;vertical-align:middle}
+.dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:6px}
+.green{color:#4ADE80}.blue{color:#60A5FA}.accent{color:#E8400C}.muted{color:#6B6B68}
+.spinner{display:inline-block;width:12px;height:12px;border:2px solid #333;border-top-color:#E8400C;border-radius:50%;animation:spin .7s linear infinite;margin-right:6px;vertical-align:middle}
+@keyframes spin{to{transform:rotate(360deg)}}
+.footer{text-align:right;font-size:11px;color:#242220;margin-top:8px}
+@media(max-width:640px){.charts{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="header">
+    <div>
+      <h1>Crossmate · Manager interno</h1>
+      <p id="updated"><span class="spinner"></span>Cargando datos...</p>
+    </div>
+    <button class="badge" onclick="loadAll()">↺ Actualizar</button>
+  </div>
+
+  <div class="pills">
+    <button class="pill active" onclick="setPeriod(7,this)">7 días</button>
+    <button class="pill" onclick="setPeriod(30,this)">30 días</button>
+    <button class="pill" onclick="setPeriod(0,this)">Total</button>
+  </div>
+
+  <div class="kpis">
+    <div class="kpi loading"><div class="kpi-val" id="v-boxes">—</div><div class="kpi-label">Boxes</div></div>
+    <div class="kpi loading"><div class="kpi-val green" id="v-boxes-act">—</div><div class="kpi-label">Boxes activos</div><div class="kpi-sub">actividad ≤7d</div></div>
+    <div class="kpi loading"><div class="kpi-val" id="v-atletas">—</div><div class="kpi-label">Atletas en boxes</div></div>
+    <div class="kpi loading"><div class="kpi-val blue" id="v-active-users">—</div><div class="kpi-label" id="l-active-users">Activos 7d</div><div class="kpi-sub" id="s-active-users">—</div></div>
+    <div class="kpi loading"><div class="kpi-val" id="v-logs-total">—</div><div class="kpi-label">Logs totales</div></div>
+    <div class="kpi loading"><div class="kpi-val accent" id="v-logs-period">—</div><div class="kpi-label" id="l-logs-period">Logs 7d</div></div>
+    <div class="kpi loading"><div class="kpi-val" id="v-plannings">—</div><div class="kpi-label">Planificaciones</div></div>
+    <div class="kpi loading"><div class="kpi-val" id="v-groups">—</div><div class="kpi-label">Grupos</div></div>
+  </div>
+
+  <div class="charts">
+    <div class="card">
+      <div class="card-title">Logs + usuarios activos · 12 semanas</div>
+      <div class="chart-wrap" id="chart-logs"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Nuevos usuarios · 13 semanas</div>
+      <div class="chart-wrap" id="chart-users"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title" id="box-count">Boxes</div>
+    <div class="search-row">
+      <input type="text" id="search" placeholder="Buscar box..." oninput="renderTable()"/>
+      <button class="pill active" onclick="setFilter('todos',this)">todos</button>
+      <button class="pill" onclick="setFilter('activos',this)">activos</button>
+      <button class="pill" onclick="setFilter('recientes',this)">recientes</button>
+      <button class="pill" onclick="setFilter('vacios',this)">vacíos</button>
+    </div>
+    <div style="overflow-x:auto">
+      <table>
+        <thead><tr>
+          <th></th><th>Box</th><th>Atletas</th><th>Logs 30d</th><th>Usuarios 30d</th><th>Logs total</th><th>Última actividad</th>
+        </tr></thead>
+        <tbody id="tbody"><tr><td colspan="7" style="color:#6B6B68;padding:20px 10px"><span class="spinner"></span>Cargando...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="footer">Crossmate · uso interno</div>
+</div>
+
+<script>
+const URL_BASE = 'https://xreplwlxcgojsofgkfra.supabase.co/rest/v1';
+const KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhyZXBsd2x4Y2dvanNvZmdrZnJhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ1NTQyMjUsImV4cCI6MjA3MDEzMDIyNX0.Ags4_KOF5lD7lPu1d8XxOoxjFKtMFHCxCAW5I3CEKj0';
+const HDR = {'apikey':KEY,'Authorization':'Bearer '+KEY};
+
+let STATE = {boxes:[], logs:[], usersBoxes:[], plannings:[], groups:[], period:7, filter:'todos'};
+
+function fmt(n){if(n===undefined||n===null)return'—';return n>=1000?(n/1000).toFixed(1)+'k':String(n)}
+function fdate(s){if(!s)return'—';return new Date(s).toLocaleDateString('es-ES',{day:'2-digit',month:'short',year:'2-digit'})}
+function dotColor(s){return s==='green'?'#4ADE80':s==='amber'?'#FBBF24':'#3A3835'}
+function daysAgo(n){const d=new Date();d.setDate(d.getDate()-n);return d.toISOString().slice(0,10)}
+
+async function fetchAll(table, select='*', extra=''){
+  const res = await fetch(`${URL_BASE}/${table}?select=${encodeURIComponent(select)}${extra}&limit=2000`, {headers:HDR});
+  if(!res.ok) throw new Error(`${table}: ${res.status}`);
+  return res.json();
+}
+
+async function loadAll(){
+  document.getElementById('updated').innerHTML = '<span class="spinner"></span>Actualizando...';
+  document.querySelectorAll('.kpi').forEach(k=>k.classList.add('loading'));
+  try {
+    const [boxes, usersBoxes, logs, plannings, groups] = await Promise.all([
+      fetchAll('boxes','id,name,created_at'),
+      fetchAll('users_boxes','user_id,box_id'),
+      fetchAll('workout_blocks_exercises_user_log','id,user_id,workout_date'),
+      fetchAll('plannings','id'),
+      fetchAll('athlete_groups','id'),
+    ]);
+    STATE.boxes = boxes;
+    STATE.usersBoxes = usersBoxes;
+    STATE.logs = logs;
+    STATE.plannings = plannings;
+    STATE.groups = groups;
+    compute();
+    const now = new Date().toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'});
+    document.getElementById('updated').textContent = `Actualizado ${now} · datos en tiempo real`;
+  } catch(e) {
+    document.getElementById('updated').textContent = 'Error cargando datos · ' + e.message;
+    console.error(e);
+  }
+  document.querySelectorAll('.kpi').forEach(k=>k.classList.remove('loading'));
+}
+
+function compute(){
+  const {boxes, usersBoxes, logs, plannings, groups, period} = STATE;
+  const cut7 = daysAgo(7), cut30 = daysAgo(30);
+
+  // user→box map
+  const userBox = {};
+  usersBoxes.forEach(ub => userBox[ub.user_id] = ub.box_id);
+
+  // box stats
+  const bmap = {};
+  boxes.forEach(b => bmap[b.id] = {id:b.id, name:b.name, atletas:0, logs_total:0, logs_30d:0, users_30d:new Set(), last:null});
+  usersBoxes.forEach(ub => { if(bmap[ub.box_id]) bmap[ub.box_id].atletas++; });
+
+  let logs7=0, logs30=0, users7=new Set(), users30=new Set();
+  // weekly buckets
+  const wkLogs={}, wkUsers={};
+
+  logs.forEach(l => {
+    const bid = userBox[l.user_id];
+    const bx = bid && bmap[bid];
+    if(bx){
+      bx.logs_total++;
+      if(!bx.last || l.workout_date > bx.last) bx.last = l.workout_date;
+      if(l.workout_date >= cut30){ bx.logs_30d++; bx.users_30d.add(l.user_id); }
+    }
+    if(l.workout_date >= cut7){ logs7++; users7.add(l.user_id); }
+    if(l.workout_date >= cut30){ logs30++; users30.add(l.user_id); }
+
+    // weekly (last 13 weeks)
+    if(l.workout_date >= daysAgo(91)){
+      const d = new Date(l.workout_date);
+      const day = d.getDay(); // 0=sun
+      const monday = new Date(d); monday.setDate(d.getDate() - (day===0?6:day-1));
+      const wk = monday.toISOString().slice(0,10);
+      wkLogs[wk] = (wkLogs[wk]||{logs:0,users:new Set()});
+      wkLogs[wk].logs++;
+      wkLogs[wk].users.add(l.user_id);
+    }
+  });
+
+  // new users per week
+  // (we don't have users created_at here, skip for now)
+
+  // box semaforo
+  const today = new Date().toISOString().slice(0,10);
+  const boxList = Object.values(bmap).map(b => {
+    const daysSince = b.last ? Math.floor((new Date(today)-new Date(b.last))/86400000) : 999;
+    const sem = b.logs_total>0 && daysSince<=7 ? 'green' : b.logs_total>0 && daysSince<=30 ? 'amber' : 'grey';
+    return {...b, users_30d: b.users_30d.size, sem, daysSince};
+  }).sort((a,b)=>b.logs_30d-a.logs_30d);
+  STATE.boxList = boxList;
+
+  const activeBoxes = boxList.filter(b=>b.sem==='green').length;
+
+  // KPIs
+  const logsP = period===7?logs7:period===30?logs30:logs.length;
+  const usersP = period===7?users7.size:period===30?users30.size:new Set(logs.map(l=>l.user_id)).size;
+  const totalAtletas = usersBoxes.length;
+
+  document.getElementById('v-boxes').textContent = boxes.length;
+  document.getElementById('v-boxes-act').textContent = activeBoxes;
+  document.getElementById('v-atletas').textContent = fmt(totalAtletas);
+  document.getElementById('v-active-users').textContent = usersP;
+  document.getElementById('l-active-users').textContent = period===0?'Con logs':`Activos ${period}d`;
+  document.getElementById('s-active-users').textContent = `${totalAtletas>0?Math.round(usersP/totalAtletas*100):0}% del total`;
+  document.getElementById('v-logs-total').textContent = fmt(logs.length);
+  document.getElementById('v-logs-period').textContent = fmt(logsP);
+  document.getElementById('l-logs-period').textContent = period===0?'Logs total':`Logs ${period}d`;
+  document.getElementById('v-plannings').textContent = plannings.length;
+  document.getElementById('v-groups').textContent = groups.length;
+
+  // Charts
+  const wkKeys = Object.keys(wkLogs).sort().slice(-12);
+  const chartLogsData = wkKeys.map(k=>({
+    w: new Date(k).toLocaleDateString('es-ES',{day:'2-digit',month:'short'}),
+    logs: wkLogs[k].logs,
+    users: wkLogs[k].users.size
+  }));
+  comboChart(document.getElementById('chart-logs'), chartLogsData);
+
+  renderTable();
+}
+
+function setPeriod(days, btn){
+  document.querySelectorAll('.pills .pill').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  STATE.period = days;
+  if(STATE.boxList) compute();
+}
+
+function setFilter(f, btn){
+  STATE.filter = f;
+  document.querySelectorAll('.search-row .pill').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderTable();
+}
+
+function renderTable(){
+  const q = document.getElementById('search').value.toLowerCase();
+  const rows = (STATE.boxList||[]).filter(b=>{
+    if(!b.name.toLowerCase().includes(q)) return false;
+    if(STATE.filter==='activos') return b.sem==='green';
+    if(STATE.filter==='recientes') return b.sem==='amber';
+    if(STATE.filter==='vacios') return b.atletas===0;
+    return true;
+  });
+  document.getElementById('box-count').textContent = `Boxes (${rows.length})`;
+  document.getElementById('tbody').innerHTML = rows.map(b=>`
+    <tr>
+      <td><span class="dot" style="background:${dotColor(b.sem)}"></span></td>
+      <td style="font-weight:500">${b.name}</td>
+      <td>${b.atletas||'<span class="muted">—</span>'}</td>
+      <td style="color:${b.logs_30d>0?'#E8E6DF':'#6B6B68'}">${b.logs_30d||'0'}</td>
+      <td>${b.users_30d||'<span class="muted">0</span>'}</td>
+      <td class="muted">${fmt(b.logs_total)}</td>
+      <td style="color:#6B6B68;font-size:11px">${fdate(b.last)}</td>
+    </tr>`).join('');
+}
+
+function comboChart(el, data){
+  const W=el.clientWidth||400, H=160, pad={t:8,r:8,b:28,l:36};
+  const iW=W-pad.l-pad.r, iH=H-pad.t-pad.b;
+  if(!data.length){el.innerHTML='<p style="color:#6B6B68;font-size:11px;padding:20px">Sin datos</p>';return;}
+  const maxL=Math.max(...data.map(d=>d.logs))||1;
+  const maxU=Math.max(...data.map(d=>d.users))||1;
+  const gap=iW/data.length, bw=gap*0.6;
+  let out='';
+  [0,0.5,1].forEach(f=>{
+    const y=pad.t+iH*(1-f);
+    out+=`<line x1="${pad.l}" y1="${y}" x2="${W-pad.r}" y2="${y}" stroke="#242220" stroke-dasharray="3,3"/>`;
+    out+=`<text x="${pad.l-4}" y="${y+4}" text-anchor="end" fill="#6B6B68" font-size="10">${fmt(Math.round(maxL*f))}</text>`;
+  });
+  const pts=[];
+  data.forEach((d,i)=>{
+    const cx=pad.l+i*gap+gap/2, bx=cx-bw/2;
+    const h=Math.max(2,(d.logs/maxL)*iH);
+    out+=`<rect x="${bx}" y="${pad.t+iH-h}" width="${bw}" height="${h}" fill="#E8400C" rx="2" opacity=".85"/>`;
+    pts.push(`${cx},${pad.t+iH-(d.users/maxU)*iH}`);
+    if(i%Math.ceil(data.length/6)===0)
+      out+=`<text x="${cx}" y="${H-6}" text-anchor="middle" fill="#6B6B68" font-size="9">${d.w}</text>`;
+  });
+  out+=`<polyline points="${pts.join(' ')}" fill="none" stroke="#60A5FA" stroke-width="2"/>`;
+  el.innerHTML=`<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">${out}</svg>`;
+}
+
+loadAll();
+</script>
+</body>
+</html>
